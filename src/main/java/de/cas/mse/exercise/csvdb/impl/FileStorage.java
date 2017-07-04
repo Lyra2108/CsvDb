@@ -1,6 +1,8 @@
 package de.cas.mse.exercise.csvdb.impl;
 
 import de.cas.mse.exercise.csvdb.data.Address;
+import de.cas.mse.exercise.csvdb.data.DbObject;
+import de.cas.mse.exercise.csvdb.data.DbObjectFactory;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -11,38 +13,44 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class FileStorage implements Storage<Address> {
+public class FileStorage<T extends DbObject> implements Storage<T> {
 
     private static final String CSV_SEPARATOR = ",";
     protected final Path basePath = Paths.get("data").toAbsolutePath();
+    private DbObjectFactory<T> objectFactory;
+
+    public FileStorage(DbObjectFactory<T> objectFactory) {
+        this.objectFactory = objectFactory;
+    }
 
     @Override
-    public Address loadObject(String guid) {
+    public T loadObject(String guid) {
         final Path tableFile = determineTableFile();
         try {
             final List<String> lines = Files.readAllLines(tableFile);
-            final Optional<String> matchedAddress = lines.stream().filter(e -> e.startsWith(guid)).findAny();
-            return turnToAddress(
-                    matchedAddress.orElseThrow(() -> new RuntimeException("address with guid " + guid + "not found")));
+            final Optional<String> matchedObject = lines.stream().filter(e -> e.startsWith(guid)).findAny();
+            return  objectFactory.create(
+                    matchedObject.orElseThrow(() -> new RuntimeException("object with guid " + guid + "not found")),
+                            CSV_SEPARATOR);
         } catch (final IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     @Override
-    public List<Address> loadAllObjects() {
+    public List<T> loadAllObjects() {
         final Path tableFile = determineTableFile();
         try {
             final List<String> lines = Files.readAllLines(tableFile);
-            return lines.stream().map(e -> turnToAddress(e)).collect(Collectors.toList());
+            return lines.stream().map(e -> objectFactory.create(e, CSV_SEPARATOR)).collect(Collectors.toList());
         } catch (final IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     @Override
-    public void storeObject(Address address) {
-        String csvLine = toCsvLine(address);
+    public void storeObject(T databaseObject) {
+        String csvLine = databaseObject.toCsvLine(CSV_SEPARATOR);
         final Path tableFile = determineTableFile();
         try (final RandomAccessFile file = new RandomAccessFile(tableFile.toFile(), "rw")) {
             file.seek(file.length());
@@ -52,23 +60,9 @@ public class FileStorage implements Storage<Address> {
         }
     }
 
-    protected String toCsvLine(final Address address) {
-        return address.getGuid() + CSV_SEPARATOR + address.getName() + CSV_SEPARATOR + address.getStreet()
-                + CSV_SEPARATOR + address.getZip() + CSV_SEPARATOR + address.getTown();
-    }
-
     protected Path determineTableFile() {
         return basePath.resolve("Address.csv");
     }
 
-    private Address turnToAddress(final String addressLine) {
-        final String[] split = addressLine.split(CSV_SEPARATOR);
-        final Address addressObject = new Address();
-        addressObject.setGuid(split[0]);
-        addressObject.setName(split[1]);
-        addressObject.setStreet(split[2]);
-        addressObject.setZip(split[3]);
-        addressObject.setTown(split[4]);
-        return addressObject;
-    }
+
 }

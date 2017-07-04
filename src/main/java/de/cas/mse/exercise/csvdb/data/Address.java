@@ -1,5 +1,7 @@
 package de.cas.mse.exercise.csvdb.data;
 
+import java.util.StringJoiner;
+
 public class Address implements DbObject {
 	private String guid;
 	private String name;
@@ -15,6 +17,17 @@ public class Address implements DbObject {
 	@Override
 	public void setGuid(final String guid) {
 		this.guid = guid;
+	}
+
+	@Override
+	public String toCsvLine(String separator) {
+		StringJoiner csvJoiner = new StringJoiner(separator);
+		csvJoiner.add(getGuid());
+		csvJoiner.add(getName());
+		csvJoiner.add(getStreet());
+		csvJoiner.add(getZip());
+		csvJoiner.add(getTown());
+		return csvJoiner.toString();
 	}
 
 	public String getName() {

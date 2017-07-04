@@ -2,6 +2,8 @@ package de.cas.mse.exercise.csvdb.data;
 
 public interface DbObject {
 
-	public String getGuid();
-	public void setGuid(String guid);
+	String getGuid();
+	void setGuid(String guid);
+	String toCsvLine(String separator);
 }
+
